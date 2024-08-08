@@ -1,3 +1,4 @@
+%%writefile app.py
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
@@ -57,21 +58,29 @@ def transformar_datos(df):
 df_transformed, df_original = transformar_datos(df)
 
 def preparar_datos_modelo(df):
-    # Estandarización y discretización
+    df.replace([np.inf, -np.inf], np.nan, inplace=True)
     scaler = StandardScaler()
     df['CVR_estandarizada'] = scaler.fit_transform(df[['CVR']])
+
+    # Aplicar KBinsDiscretizer a la variable "CVR" estandarizada
     kbd = KBinsDiscretizer(n_bins=3, encode='ordinal', strategy='quantile')
+
+    # Handle NaN values before applying KBinsDiscretizer
+    df['CVR_estandarizada'] = df['CVR_estandarizada'].fillna(df['CVR_estandarizada'].mean()) # Replace NaN with mean
+
     df['CVR_binned'] = kbd.fit_transform(df[['CVR_estandarizada']])
 
     # Clustering
+    # Reshape de la columna para el algoritmo de clustering
     X = df['CVR'].values.reshape(-1, 1)
-    n_clusters = 3
-    if len(df) >= n_clusters:
-        kmeans = KMeans(n_clusters=n_clusters, n_init=10, random_state=0).fit(X)
-        df['CVR_cluster'] = kmeans.labels_
-    else:
-        kmeans = KMeans(n_clusters=1, random_state=0).fit(X)
-        df['CVR_cluster'] = kmeans.labels_
+
+    # Imputar valores faltantes (NaN) con la media
+    imputer = SimpleImputer(strategy='mean')
+    X_imputed = imputer.fit_transform(X)
+
+    # Aplicar K-means con, por ejemplo, 3 clusters
+    kmeans = KMeans(n_clusters=3, random_state=0).fit(X_imputed)
+    df['CVR_cluster'] = kmeans.labels_
 
     # Check if 'ESCOLARIDAD' column exists before processing
     if 'ESCOLARIDAD' in df.columns:
