@@ -81,7 +81,10 @@ def preparar_datos_modelo(df):
     # Aplicar K-means con, por ejemplo, 3 clusters
     kmeans = KMeans(n_clusters=3, random_state=0).fit(X_imputed)
     df['CVR_cluster'] = kmeans.labels_
+    columnas_numericas = df.select_dtypes(include=['float64', 'int64'])
 
+    # Agregar la columna 'categoria' al DataFrame de columnas numéricas
+    columnas_numericas['CVR_binned'] = df['CVR_binned']
     # Check if 'ESCOLARIDAD' column exists before processing
     if 'ESCOLARIDAD' in df.columns:
         # Codificación de 'ESCOLARIDAD'
@@ -100,7 +103,7 @@ def preparar_datos_modelo(df):
     # Selección de columnas relevantes
     columns_to_keep = [
         'HIJOS', 'GENERO', 'Fuente de Reclutamiento', 'Tipo de Contacto',
-        'ESCOLARIDAD_Numerica', 'EDAD', 'CVR_cluster'
+        'ESCOLARIDAD_Numerica', 'EDAD', 'CVR_cluster','CVR_binned'
     ]
     df = df[columns_to_keep]
 
@@ -121,19 +124,18 @@ def preparar_datos_modelo(df):
     df_com = pd.concat([data_imp, datos_dummies], axis=1)
 
     # Separar características (X) y la variable objetivo (y)
-    X = df_com.drop(columns=['CVR_cluster'])
-    y = df_com['CVR_cluster']
+    X = df_com.drop(columns=['CVR_binned'])
+    y = df_com['CVR_binned']
 
     # Aplicación de SMOTE para sobremuestreo si hay suficientes datos y clases
-    if len(df_com) > 1 and len(y.unique()) > 1:
-        # Fill missing values in X before applying SMOTE
-        X = X.fillna(X.mean())  # Replace NaNs with the mean of each column
-        smote = SMOTE(sampling_strategy='not majority', random_state=42)
-        X_res, y_res = smote.fit_resample(X, y)
-        df_res = pd.DataFrame(X_res, columns=X.columns)
-        df_res['CVR_cluster'] = y_res
-    else:
-        raise ValueError("Proceso fallido: datos insuficientes o falta de clases múltiples.")
+
+    smote = SMOTE(sampling_strategy='not majority', random_state=42)
+    X_res, y_res = smote.fit_resample(X, y)
+
+    # Crear un nuevo DataFrame con los datos balanceados
+    df_res = pd.DataFrame(X_res, columns=X.columns)
+    df_res['CVR_cluster'] = y_res
+
 
     # Filtrado de variables con baja correlación con 'CVR_cluster'
     correlation_matrix = df_res.corr()
