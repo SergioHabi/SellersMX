@@ -134,18 +134,18 @@ def preparar_datos_modelo(df):
 
     # Crear un nuevo DataFrame con los datos balanceados
     df_res = pd.DataFrame(X_res, columns=X.columns)
-    df_res['CVR_cluster'] = y_res
+    df_res['CVR_binned'] = y_res
 
 
     # Filtrado de variables con baja correlación con 'CVR_cluster'
     correlation_matrix = df_res.corr()
     correlation_threshold = 0.5
-    low_correlation_vars = correlation_matrix[abs(correlation_matrix['CVR_cluster']) < correlation_threshold]['CVR_cluster']
+    low_correlation_vars = correlation_matrix[abs(correlation_matrix['CVR_binned']) < correlation_threshold]['CVR_binned']
     low_correlation_var_names = low_correlation_vars.index.tolist()
 
     # Asegurar que 'CVR_cluster' esté en la lista de variables seleccionadas
-    if 'CVR_cluster' not in low_correlation_var_names:
-        low_correlation_var_names.append('CVR_cluster')
+    if 'CVR_binned' not in low_correlation_var_names:
+        low_correlation_var_names.append('CVR_binned')
 
     # Crear un nuevo DataFrame con las variables seleccionadas
     df_low_corr = df_res[low_correlation_var_names]
@@ -155,8 +155,8 @@ def preparar_datos_modelo(df):
     df_low_corr.drop(columns=[col for col in columns_to_drop if col in df_low_corr.columns], axis=1, inplace=True)
 
     # Definir las variables predictoras (X) y la variable objetivo (y)
-    X = df_low_corr.drop(columns=['CVR_cluster'])
-    y = df_low_corr['CVR_cluster']
+    X = df_low_corr.drop(columns=['CVR_binned'])
+    y = df_low_corr['CVR_binned']
 
     return X, y
 
