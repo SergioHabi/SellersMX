@@ -1,4 +1,3 @@
-
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
@@ -19,6 +18,17 @@ import seaborn as sns
 # Cargar el archivo CSV desde una ruta específica
 file_path = 'BBDD TA - BD.csv'
 df = pd.read_csv(file_path, sep=',', header=0, index_col=0)
+
+# Seleccionar columnas de tipo 'object'
+object_columns = df.select_dtypes(include=['object']).columns
+
+# Filtrar columnas de tipo 'object' que tienen valores faltantes
+cf = [col for col in object_columns if df[col].isnull().any()]
+
+# Imputar los valores faltantes con la moda
+from sklearn.impute import SimpleImputer
+imputador = SimpleImputer(strategy='most_frequent')
+df[cf] = imputador.fit_transform(df[cf])
 
 # Definir la función para transformar los datos
 def transformar_datos(df):
@@ -118,7 +128,7 @@ def preparar_datos_modelo(df):
 
     # Codificación de variables categóricas a dummies
     df_object = df.select_dtypes(include=['object'])
-    datos_dummies = pd.get_dummies(df_object, columns=['HIJOS', 'GENERO', 'Fuente de Reclutamiento', 'Tipo de Contacto'])
+    datos_dummies = pd.get_dummies(df_object, columns=['HIJOS', 'GENERO', 'Fuente de Reclutamiento', 'Tipo de Contacto','SECTOR','LIDER'])
 
     # Combinar las variables imputadas y las dummies
     df_com = pd.concat([data_imp, datos_dummies], axis=1)
@@ -166,10 +176,10 @@ def preparar_datos_modelo(df):
 # Definir el modelo Random Forest
 def entrenar_modelo(X, y):
     param_grid = {
-        'n_estimators': [50],
-        'max_depth': [10],
-        'min_samples_split': [2],
-        'min_samples_leaf': [8]
+        'n_estimators': [200],
+        'max_depth': [20],
+        'min_samples_split': [10],
+        'min_samples_leaf': [1]
     }
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
@@ -197,8 +207,24 @@ HIJOS = st.sidebar.selectbox("HIJOS", ['NO', 'SI'], key='selectbox_hijos')
 GENERO = st.sidebar.selectbox("GENERO", ['MASCULINO', 'FEMENINO'], key='selectbox_genero')
 Fuente_de_Reclutamiento = st.sidebar.selectbox("Fuente de Reclutamiento", df['Fuente de Reclutamiento'].unique(), key='selectbox_fuente')
 Tipo_de_Contacto = st.sidebar.selectbox("Tipo de Contacto", df['Tipo de Contacto'].unique(), key='selectbox_contacto')
+SECTOR= st.sidebar.selectbox("SECTOR", df['SECTOR'].unique(), key='selectbox_sector')
+LIDER = st.sidebar.selectbox("LIDER", df['LIDER'].unique(), key='selectbox_lider')
 edad = st.sidebar.slider("Edad", 18, 70, key='slider_edad')
-escolaridad_numrica = st.sidebar.selectbox("Escolaridad", [0, 1, 2, 3, 4, 5], key='selectbox_escolaridad')
+# Mapeo de los niveles de escolaridad a números
+escolaridad_map = {
+    'PRIMARIA': 0,
+    'BACHILLER': 1,
+    'TECNICO': 2,
+    'TECNÓLOGO': 3,
+    'PREGRADO': 4,
+    'POSTGRADO': 5
+}
+
+# Selectbox para Escolaridad usando el mapeo
+escolaridad_seleccionada = st.sidebar.selectbox("Escolaridad", list(escolaridad_map.keys()), key='selectbox_escolaridad')
+escolaridad_numrica = escolaridad_map[escolaridad_seleccionada]
+TIEMPO_ESTUDIO = st.sidebar.slider("TIEMPO ESTUDIO", 0, 20, key='slider_tiempo_estudio')
+EXPERIENCIA = st.sidebar.slider("EXPERIENCIA", 0, 20, key='slider_experiencia')
 
 # Convertir las variables ingresadas en un DataFrame
 nuevo_dato = pd.DataFrame({
@@ -206,6 +232,10 @@ nuevo_dato = pd.DataFrame({
     'GENERO': [GENERO],
     'Fuente de Reclutamiento': [Fuente_de_Reclutamiento],
     'Tipo de Contacto': [Tipo_de_Contacto],
+    'SECTOR': [SECTOR],
+    'LIDER': [LIDER],
+    'TIEMPO ESTUDIO': [TIEMPO_ESTUDIO],
+    'EXPERIENCIA': [EXPERIENCIA],
     'edad': [edad],
     'escolaridad_numrica': [escolaridad_numrica]
 })
